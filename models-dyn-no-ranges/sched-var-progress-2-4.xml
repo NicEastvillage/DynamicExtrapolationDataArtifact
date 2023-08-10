@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.5//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_5.dtd'>
+<nta>
+	<declaration>
+const int N = 2; // CPUs
+const int T = 3; // Jobs
+
+const int MAX_ALLOT = 300;
+
+typedef int[1,N] CPUid;
+typedef int[1,T] Jobid;
+typedef int[0,T] OptJobid;
+typedef int[1,MAX_ALLOT] Allot;
+
+clock global_time;
+
+chan start[CPUid][Jobid][MAX_ALLOT+1];
+chan end[CPUid][Jobid][MAX_ALLOT+1];
+</declaration>
+	<template>
+		<name>Job</name>
+		<parameter>const Jobid id, const int size, const int period, const int offset, const int deadline</parameter>
+		<declaration>
+clock x;
+
+int progres = 0;</declaration>
+		<location id="id0" x="-144" y="-221">
+			<name x="-195" y="-247">Done</name>
+			<label kind="invariant" x="-238" y="-229">x&lt;=period</label>
+		</location>
+		<location id="id1" x="-425" y="8">
+			<name x="-476" y="-17">Init</name>
+			<label kind="invariant" x="-518" y="0">x&lt;=offset</label>
+		</location>
+		<location id="id2" x="-144" y="8">
+			<name x="-195" y="-34">Ready</name>
+			<label kind="invariant" x="-246" y="-17">x&lt;=deadline</label>
+		</location>
+		<location id="id3" x="195" y="110">
+			<name x="212" y="85">Running</name>
+			<label kind="invariant" x="212" y="102">x&lt;=deadline</label>
+		</location>
+		<location id="id4" x="195" y="-76">
+			<name x="212" y="-102">Evaluating</name>
+			<committed/>
+		</location>
+		<location id="id5" x="-144" y="229" color="#ffc0cb">
+			<name x="-195" y="204">Fail</name>
+		</location>
+		<init ref="id1"/>
+		<transition id="id6">
+			<source ref="id2"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-246" y="110">x&gt;=deadline</label>
+		</transition>
+		<transition id="id7">
+			<source ref="id3"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-8" y="178">x&gt;=deadline</label>
+		</transition>
+		<transition id="id8">
+			<source ref="id4"/>
+			<target ref="id2"/>
+			<label kind="guard" x="34" y="-34">progres&lt;size</label>
+		</transition>
+		<transition id="id9">
+			<source ref="id0"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-229" y="-161">x&gt;=period</label>
+			<label kind="assignment" x="-229" y="-144">x:=0,
+progres:=0</label>
+		</transition>
+		<transition id="id10">
+			<source ref="id4"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-42" y="-136">progres==size</label>
+		</transition>
+		<transition id="id11">
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="select" x="204" y="-34">c : CPUid,
+t : Allot</label>
+			<label kind="synchronisation" x="204" y="0">end[c][id][t]?</label>
+			<label kind="assignment" x="204" y="17">progres+=t</label>
+		</transition>
+		<transition id="id12">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="select" x="-93" y="42">c : CPUid,
+t : Allot</label>
+			<label kind="guard" x="-93" y="76">0&lt;t &amp;&amp; t&lt;=size - progres</label>
+			<label kind="synchronisation" x="-93" y="93">start[c][id][t]!</label>
+		</transition>
+		<transition id="id13">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-357" y="8">x&gt;=offset</label>
+			<label kind="assignment" x="-357" y="25">x:=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>CPU</name>
+		<parameter>const CPUid id</parameter>
+		<declaration>
+clock x;
+
+int time = 0;
+OptJobid task = 0;
+</declaration>
+		<location id="id14" x="-263" y="-68">
+			<name x="-323" y="-85">Idle</name>
+		</location>
+		<location id="id15" x="-119" y="-8">
+			<name x="-93" y="-25">Working</name>
+			<label kind="invariant" x="-93" y="-8">x&lt;=time</label>
+		</location>
+		<init ref="id14"/>
+		<transition id="id16">
+			<source ref="id15"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-263" y="0">x&gt;=time</label>
+			<label kind="synchronisation" x="-263" y="25">end[id][task][time]!</label>
+			<label kind="assignment" x="-263" y="51">time:=0,
+task:=0</label>
+			<nail x="-263" y="-8"/>
+		</transition>
+		<transition id="id17">
+			<source ref="id14"/>
+			<target ref="id15"/>
+			<label kind="select" x="-246" y="-204">t : Allot,
+i : Jobid</label>
+			<label kind="synchronisation" x="-246" y="-161">start[id][i][t]?</label>
+			<label kind="assignment" x="-246" y="-136">x:=0,
+time:=t,
+task:=i</label>
+			<nail x="-119" y="-68"/>
+		</transition>
+	</template>
+	<system>
+// Jobs (id, size, period, offset, deadline)
+J1 = Job(1, 40, 100, 10, 60);
+J2 = Job(2, 20, 100, 30, 30);
+J3 = Job(3, 10, 70, 00, 15);
+J4 = Job(4, 20, 95, 60, 30);
+
+system CPU
+    , J1
+    , J2
+    , J3
+    , J4
+;</system>
+	<queries>
+		<option key="--extrapolation" value="0"/>
+		<query>
+			<formula>E&lt;&gt; false</formula>
+			<comment/>
+		</query>
+	</queries>
+</nta>

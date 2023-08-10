@@ -1,0 +1,8 @@
+numpy
+seaborn
+matplotlib
+pandas
+path
+plotly
+kaleido=0.1.0
+latex
